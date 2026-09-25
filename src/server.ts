@@ -124,7 +124,7 @@ if (fs.existsSync(clientDist)) {
 
 export { app, practiceService, problemRepository, attemptRepository };
 
-if (process.env.NODE_ENV !== 'test') {
+if (process.env.NODE_ENV !== 'test' && !process.env.VERCEL) {
   app.listen(PORT, () => {
     console.log(`[LLD Platform Server] Running on http://localhost:${PORT}`);
   });
