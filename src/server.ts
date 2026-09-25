@@ -1,3 +1,4 @@
+
 import express, { Request, Response } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -19,8 +20,10 @@ const problemRepository = new InMemoryProblemRepository();
 const attemptRepository = new InMemoryAttemptRepository();
 const practiceService = new PracticePlatformService(problemRepository, attemptRepository);
 
+const apiRouter = express.Router();
+
 // Health check
-app.get('/api/health', (req: Request, res: Response) => {
+apiRouter.get('/health', (req: Request, res: Response) => {
   res.json({
     status: 'healthy',
     service: 'LLD Practice Platform API',
@@ -30,7 +33,7 @@ app.get('/api/health', (req: Request, res: Response) => {
 });
 
 // List all problems
-app.get('/api/problems', async (req: Request, res: Response) => {
+apiRouter.get('/problems', async (req: Request, res: Response) => {
   try {
     const problems = await practiceService.getProblems();
     res.json(problems.map(p => ({
@@ -48,7 +51,7 @@ app.get('/api/problems', async (req: Request, res: Response) => {
 });
 
 // Get problem detail by ID or Slug
-app.get('/api/problems/:idOrSlug', async (req: Request, res: Response) => {
+apiRouter.get('/problems/:idOrSlug', async (req: Request, res: Response) => {
   try {
     const idOrSlug = Array.isArray(req.params.idOrSlug) ? req.params.idOrSlug[0] : req.params.idOrSlug;
     const problem = await practiceService.getProblem(idOrSlug);
@@ -62,7 +65,7 @@ app.get('/api/problems/:idOrSlug', async (req: Request, res: Response) => {
 });
 
 // Submit a practice attempt
-app.post('/api/problems/:id/attempts', async (req: Request, res: Response) => {
+apiRouter.post('/problems/:id/attempts', async (req: Request, res: Response) => {
   try {
     const problemId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const userId = (req.body.userId as string) || 'learner-default';
@@ -80,7 +83,7 @@ app.post('/api/problems/:id/attempts', async (req: Request, res: Response) => {
 });
 
 // Get specific attempt details
-app.get('/api/attempts/:id', async (req: Request, res: Response) => {
+apiRouter.get('/attempts/:id', async (req: Request, res: Response) => {
   try {
     const attemptId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const attempt = await practiceService.getAttempt(attemptId);
@@ -94,7 +97,7 @@ app.get('/api/attempts/:id', async (req: Request, res: Response) => {
 });
 
 // Get attempt history & evolution for a problem & user
-app.get('/api/problems/:id/history', async (req: Request, res: Response) => {
+apiRouter.get('/problems/:id/history', async (req: Request, res: Response) => {
   try {
     const problemId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
     const userId = (req.query.userId as string) || 'learner-default';
@@ -104,6 +107,11 @@ app.get('/api/problems/:id/history', async (req: Request, res: Response) => {
     res.status(500).json({ error: err.message });
   }
 });
+
+// Mount on both /api and root to handle any serverless prefix behavior
+app.use('/api', apiRouter);
+app.use(apiRouter);
+
 
 // Static serving of frontend for production deployment
 import path from 'path';
@@ -116,7 +124,7 @@ const clientDist = path.join(__dirname, '../dist/client');
 
 if (fs.existsSync(clientDist)) {
   app.use(express.static(clientDist));
-  app.get('*', (req: Request, res: Response, next) => {
+  app.use((req: Request, res: Response, next) => {
     if (req.path.startsWith('/api')) return next();
     res.sendFile(path.join(clientDist, 'index.html'));
   });
